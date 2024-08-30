@@ -52,21 +52,16 @@ namespace CachedTTSRelay {
                                             string voiceCacheUsed = string.Empty;
                                             if (request != null) {
                                                 if (request.VoiceLinePriority != VoiceLinePriority.SendNote && request.VoiceLinePriority != VoiceLinePriority.Datamining) {
-                                                    Stream stream = null;
-                                                    int giveUpTimer = 0;
-                                                    //while ((stream == null || stream.Length == 0) && giveUpTimer++ < 10) {
                                                     var generatedLine = await mediaManager.GetCharacterAudio(request.Text, request.UnfilteredText, request.RawText,
                                                      request.Character, !JsonConvert.DeserializeObject<ReportData>(request.ExtraJsonData).gender, request.Voice, false,
                                                      GetVoiceModel(request.Model), request.ExtraJsonData, request.RedoLine, request.Override, request.VoiceLinePriority == VoiceLinePriority.Ignore,
                                                      request.VoiceLinePriority);
                                                     resp.StatusCode = (int)HttpStatusCode.OK;
                                                     resp.StatusDescription = generatedLine.Item3;
-                                                    stream = generatedLine.Item1;
                                                     if (generatedLine.Item1 != null && resp != null && resp.OutputStream != null) {
                                                         await generatedLine.Item1.CopyToAsync(resp.OutputStream);
                                                     }
                                                     Thread.Sleep(300);
-                                                    //}
                                                 }
                                                 Console.WriteLine("TTS processed and sent! " + profilingTimer.Elapsed);
                                                 profilingTimer.Stop();
