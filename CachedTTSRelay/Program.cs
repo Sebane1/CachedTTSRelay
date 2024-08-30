@@ -1,101 +1,92 @@
-﻿using System.Diagnostics;
+﻿using Newtonsoft.Json;
+using RoleplayingMediaCore;
+using RoleplayingVoiceCore;
+using RoleplayingVoiceDalamud.Datamining;
+using RoleplayingVoiceDalamud.Voice;
+using System.Diagnostics;
 using System.Net;
+using static RoleplayingVoiceCore.NPCVoiceManager;
 
 namespace CachedTTSRelay {
     internal class Program {
         public static string ReplaceInvalidChars(string filename) {
             return string.Join("_", filename.Split(Path.GetInvalidFileNameChars()));
         }
-
-        static void Main(string[] args) {
-            HttpListener ttsListener = new HttpListener();
-            ttsListener.Prefixes.Add("https://ai.hubujubu.com:5697/");
-            ttsListener.Prefixes.Add("https://10.0.0.21:5697/");
-            ttsListener.Prefixes.Add("https://localhost:5697/");
-            try {
-                ttsListener.Start();
-            } catch {
-                Console.WriteLine("Elevenlabs Listener Failed To Run");
+        public static VoiceModel GetVoiceModel(string value) {
+            switch (value.ToLower()) {
+                case "quality":
+                    return VoiceModel.Quality;
+                case "speed":
+                    return VoiceModel.Speed;
+                case "cheap":
+                    return VoiceModel.Cheap;
             }
-            Task.Run(() => {
-                Stopwatch saveCooldown = new Stopwatch();
-                saveCooldown.Start();
-                while (true) {
-                    try {
-                        HttpListenerContext ctx = ttsListener.GetContext();
-                        Task.Run(async () => {
-                            using (HttpListenerResponse resp = ctx.Response) {
-                                using (StreamReader reader = new StreamReader(ctx.Request.InputStream)) {
-                                    try {
-                                        Stopwatch profilingTimer = Stopwatch.StartNew();
-                                        string json = reader.ReadToEnd();
-                                        VoiceLineRequest request = JsonConvert.DeserializeObject<VoiceLineRequest>(json);
-                                        KeyValuePair<bool, string> generatedLine = new KeyValuePair<bool, string>(false, "");
-                                        string voiceCacheUsed = string.Empty;
-                                        if (request != null) {
-                                            if (request.VoiceLinePriority != VoiceLinePriority.SendNote && request.VoiceLinePriority != VoiceLinePriority.Datamining) {
-                                                if (request.AggressiveCache) {
-                                                    File.OpenRead(
-                                                    await _mediaManager.DoVoice(request.Text, request.Voice, false)).CopyTo(resp.OutputStream);
-                                                } else {
-                                                    generatedLine = await _mediaManager.GetVoiceNoAggressiveCache(request.Text, request.UnfilteredText, request.RawText,
-                                                    request.Voice, request.Character, request.Model, request.RedoLine, request.Override, request.VoiceLinePriority, request.VersionIdentifier, request.UseMuteList, resp);
-                                                }
-                                            }
-                                            //voiceCacheUsed = generatedLine.Value;
-                                            //resp.Headers.Add("VoiceEngine", voiceCacheUsed);
-                                            //resp.StatusDescription = voiceCacheUsed;
-                                            //resp.StatusCode = (int)HttpStatusCode.OK;
-                                            Console.WriteLine("Check if need to save missing data to log.");
-
-                                            if (request.VoiceLinePriority == VoiceLinePriority.SendNote) {
-                                                try {
-                                                    Console.WriteLine("Save to log.");
-                                                    string characterName = ReplaceInvalidChars(request.Character);
-                                                    Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"notes\"));
-                                                    string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"notes\" + characterName + "_" + CreateMD5(request.Text) + ".json");
-                                                    if (!File.Exists(path)) {
-                                                        File.WriteAllText(path, request.ExtraJsonData);
+            return VoiceModel.Cheap;
+        }
+        static void Main(string[] args) {
+            Task.Run(async () => {
+                NPCVoiceManager mediaManager = new NPCVoiceManager(await NPCVoiceMapping.GetVoiceMappings(), await NPCVoiceMapping.GetCharacterToCacheType(),
+                            AppDomain.CurrentDomain.BaseDirectory, "7fe29e49-2d45-423d-8efc-d8e2c1ceaf6d");
+                HttpListener ttsListener = new HttpListener();
+                //ttsListener.Prefixes.Add("https://ai.hubujubu.com:5670/");
+                //ttsListener.Prefixes.Add("http://10.0.0.21:5670/");
+                ttsListener.Prefixes.Add("http://localhost:5670/");
+                try {
+                    ttsListener.Start();
+                } catch {
+                    Console.WriteLine("TTS Listener Failed To Run");
+                }
+                _ = Task.Run(() => {
+                    Stopwatch saveCooldown = new Stopwatch();
+                    saveCooldown.Start();
+                    while (true) {
+                        try {
+                            HttpListenerContext ctx = ttsListener.GetContext();
+                            Task.Run(async () => {
+                                using (HttpListenerResponse resp = ctx.Response) {
+                                    using (StreamReader reader = new StreamReader(ctx.Request.InputStream)) {
+                                        try {
+                                            Stopwatch profilingTimer = Stopwatch.StartNew();
+                                            string json = reader.ReadToEnd();
+                                            ProxiedVoiceRequest request = JsonConvert.DeserializeObject<ProxiedVoiceRequest>(json);
+                                            string voiceCacheUsed = string.Empty;
+                                            if (request != null) {
+                                                if (request.VoiceLinePriority != VoiceLinePriority.SendNote && request.VoiceLinePriority != VoiceLinePriority.Datamining) {
+                                                    Stream stream = null;
+                                                    int giveUpTimer = 0;
+                                                    //while ((stream == null || stream.Length == 0) && giveUpTimer++ < 10) {
+                                                    var generatedLine = await mediaManager.GetCharacterAudio(request.Text, request.UnfilteredText, request.RawText,
+                                                     request.Character, !JsonConvert.DeserializeObject<ReportData>(request.ExtraJsonData).gender, request.Voice, false,
+                                                     GetVoiceModel(request.Model), request.ExtraJsonData, request.RedoLine, request.Override, request.VoiceLinePriority == VoiceLinePriority.Ignore,
+                                                     request.VoiceLinePriority);
+                                                    resp.StatusCode = (int)HttpStatusCode.OK;
+                                                    resp.StatusDescription = generatedLine.Item3;
+                                                    stream = generatedLine.Item1;
+                                                    if (generatedLine.Item1 != null && resp != null && resp.OutputStream != null) {
+                                                        await generatedLine.Item1.CopyToAsync(resp.OutputStream);
                                                     }
-                                                } catch (Exception e) {
-                                                    Console.WriteLine(e.Message);
+                                                    Thread.Sleep(300);
+                                                    //}
                                                 }
-                                            } else if (!generatedLine.Key && !string.IsNullOrEmpty(request.ExtraJsonData)) {
-                                                try {
-                                                    Console.WriteLine("Save to log.");
-                                                    string characterName = ReplaceInvalidChars(request.Character);
-                                                    Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"logs\"));
-                                                    string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"logs\" + characterName + "_" + CreateMD5(request.Text) + ".json");
-                                                    if (!File.Exists(path)) {
-                                                        File.WriteAllText(path, request.ExtraJsonData);
-                                                    }
-                                                } catch (Exception e) {
-                                                    Console.WriteLine(e.Message);
-                                                }
-                                            } else if (!string.IsNullOrEmpty(request.ExtraJsonData)) {
-                                                Console.WriteLine("Save to log.");
-                                                string characterName = ReplaceInvalidChars(request.Character);
-                                                Directory.CreateDirectory(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"datamining\"));
-                                                string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"datamining\" + characterName + "_" + CreateMD5(request.Text) + ".json");
-                                                if (!File.Exists(path)) {
-                                                    File.WriteAllText(path, request.ExtraJsonData);
-                                                }
+                                                Console.WriteLine("TTS processed and sent! " + profilingTimer.Elapsed);
+                                                profilingTimer.Stop();
+                                                await resp.OutputStream.FlushAsync();
                                             }
-                                            Console.WriteLine("TTS processed and sent! " + profilingTimer.Elapsed);
-                                            profilingTimer.Stop();
-                                            await resp.OutputStream.FlushAsync();
-                                        } 
-                                    } catch (Exception e) {
-                                        Console.WriteLine(e.Message + " " + e);
+                                        } catch (Exception e) {
+                                            Console.WriteLine(e.Message + " " + e);
+                                        }
                                     }
                                 }
-                            }
-                        });
-                    } catch (Exception e) {
-                        Console.WriteLine(e.Message);
+                            });
+                        } catch (Exception e) {
+                            Console.WriteLine(e.Message);
+                        }
                     }
-                }
+                });
             });
+            while (true) {
+                Thread.Sleep(60000);
+            }
         }
     }
 }
