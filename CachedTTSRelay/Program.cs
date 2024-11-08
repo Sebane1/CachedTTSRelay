@@ -70,17 +70,17 @@ namespace CachedTTSRelay {
                                                 if (request != null) {
                                                     if (request.VoiceLinePriority != VoiceLinePriority.SendNote
                                                     && request.VoiceLinePriority != VoiceLinePriority.Datamining) {
-                                                        var generatedLine = await mediaManager.GetCharacterAudio(
+                                                        var generatedLine = await mediaManager.GetCharacterAudio(resp.OutputStream,
                                                          request.Text, request.UnfilteredText, request.RawText,
                                                          request.Character, !JsonConvert.DeserializeObject<ReportData>(request.ExtraJsonData).gender,
                                                          request.Voice, false, GetVoiceModel(request.Model), request.ExtraJsonData, request.RedoLine,
                                                          request.Override, request.VoiceLinePriority == VoiceLinePriority.Ignore, request.VoiceLinePriority);
 
                                                         resp.StatusCode = (int)HttpStatusCode.OK;
-                                                        resp.StatusDescription = generatedLine.Item3;
-                                                        if (generatedLine.Item1 != null && resp != null && resp.OutputStream != null) {
-                                                            await generatedLine.Item1.CopyToAsync(resp.OutputStream);
-                                                        }
+                                                        resp.StatusDescription = generatedLine.Item2;
+                                                        //if (generatedLine.Item1 != null && resp != null && resp.OutputStream != null) {
+                                                        //    await generatedLine.Item1.CopyToAsync(resp.OutputStream);
+                                                        //}
                                                         await resp.OutputStream.FlushAsync();
                                                         resp.Close();
                                                     }
