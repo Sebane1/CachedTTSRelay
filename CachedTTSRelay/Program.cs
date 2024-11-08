@@ -49,9 +49,7 @@ namespace CachedTTSRelay {
                         await NPCVoiceMapping.GetVoiceMappings(), await NPCVoiceMapping.GetCharacterToCacheType(),
                         AppDomain.CurrentDomain.BaseDirectory, "7fe29e49-2d45-423d-8efc-d8e2c1ceaf6d");
                     HttpListener ttsListener = new HttpListener();
-                    //ttsListener.Prefixes.Add("https://ai.hubujubu.com:5670/");
-                    //ttsListener.Prefixes.Add("http://10.0.0.21:5670/");
-                    ttsListener.Prefixes.Add("http://localhost:5670/");
+                    ttsListener.Prefixes.Add("http://*:5670/");
                     try {
                         ttsListener.Start();
                     } catch {
