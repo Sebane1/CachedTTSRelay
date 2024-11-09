@@ -56,7 +56,7 @@ namespace CachedTTSRelay {
                         Console.WriteLine("TTS Listener Failed To Run");
                     }
                     _ = Task.Run(() => {
-                        Console.WriteLine("Server started.");
+                        Console.WriteLine("Server started");
                         while (true) {
                             try {
                                 HttpListenerContext ctx = ttsListener.GetContext();
@@ -75,10 +75,7 @@ namespace CachedTTSRelay {
                                                          request.Text, request.UnfilteredText, request.RawText,
                                                          request.Character, !JsonConvert.DeserializeObject<ReportData>(request.ExtraJsonData).gender,
                                                          request.Voice, false, GetVoiceModel(request.Model), request.ExtraJsonData, request.RedoLine,
-                                                         request.Override, request.VoiceLinePriority == VoiceLinePriority.Ignore, request.VoiceLinePriority);
-
-                                                        resp.StatusCode = (int)HttpStatusCode.OK;
-                                                        resp.StatusDescription = generatedLine.Item2;
+                                                         request.Override, request.VoiceLinePriority == VoiceLinePriority.Ignore, request.VoiceLinePriority, resp);
                                                         //if (generatedLine.Item1 != null && resp != null && resp.OutputStream != null) {
                                                         //    await generatedLine.Item1.CopyToAsync(resp.OutputStream);
                                                         //}
