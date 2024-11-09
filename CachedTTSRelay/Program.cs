@@ -56,6 +56,7 @@ namespace CachedTTSRelay {
                         Console.WriteLine("TTS Listener Failed To Run");
                     }
                     _ = Task.Run(() => {
+                        Console.WriteLine("Server started.");
                         while (true) {
                             try {
                                 HttpListenerContext ctx = ttsListener.GetContext();
