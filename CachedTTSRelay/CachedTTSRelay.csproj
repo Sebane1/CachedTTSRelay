@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Autoupdater.NET.Official" Version="1.9.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Core.System.Windows.Forms" Version="1.0.0-alpha5" Condition="$([MSBuild]::IsOSPlatform('Linux'))"/>
   </ItemGroup>
 
   <ItemGroup>
