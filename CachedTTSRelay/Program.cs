@@ -12,6 +12,7 @@ using static RoleplayingVoiceCore.NPCVoiceManager;
 namespace CachedTTSRelay {
     internal class Program {
         private static string _version;
+        private static ServerRegistrationManager _serverRegistrationManager;
 
         public static string ReplaceInvalidChars(string filename) {
             return string.Join("_", filename.Split(Path.GetInvalidFileNameChars()));
@@ -53,7 +54,7 @@ namespace CachedTTSRelay {
         }
 
         private static void StartServerListService() {
-
+            _serverRegistrationManager = new ServerRegistrationManager(NPCVoiceManager.CreateMD5(Environment.MachineName + Environment.UserName + Environment.ProcessPath));
         }
 
         private static void StartAudioRelay() {
