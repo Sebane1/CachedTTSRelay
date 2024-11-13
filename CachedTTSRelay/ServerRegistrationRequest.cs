@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace CachedTTSRelay {
     public class ServerRegistrationRequest {
         private string _publicHostAddress = "";
-        private string _port = "";
+        private string _port = "5670";
         private string _region = "";
         private string _alias = "";
         private string _uniqueIdentifier = "";

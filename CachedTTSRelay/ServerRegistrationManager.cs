@@ -40,8 +40,14 @@ namespace CachedTTSRelay {
                                         if (string.IsNullOrEmpty(request.PublicHostAddress)) {
                                             request.PublicHostAddress = ctx.Request.RemoteEndPoint.Address.ToString();
                                         }
+                                        if (string.IsNullOrEmpty(request.Port)) {
+                                            request.Port = "5670";
+                                        }
                                         request.LastResponse = DateTime.UtcNow;
                                         if (await _mediaManager.VerifyServer(request.PublicHostAddress, request.Port)) {
+                                            if (!_serverRegionList.ContainsKey(request.Region)) {
+                                                _serverRegionList[request.Region] = new Dictionary<string, ServerRegistrationRequest>();
+                                            }
                                             _serverRegionList[request.Region][request.UniqueIdentifier] = request;
                                             ctx.Response.StatusCode = (int)HttpStatusCode.OK;
                                         }
@@ -65,12 +71,15 @@ namespace CachedTTSRelay {
             _ = Task.Run(async () => {
                 Console.WriteLine("Registering Server Heartbeat");
                 string jsonConfig = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
+                ServerRegistrationRequest request = new ServerRegistrationRequest();
+                if (File.Exists(jsonConfig)) {
+                    request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(File.ReadAllText(jsonConfig));
+                }
+                if (string.IsNullOrEmpty(request.Region)) {
+                    request.Region = RegionAndLanguageHelper.GetMachineCurrentLocation(5);
+                }
                 while (true) {
                     using (HttpClient httpClient = new HttpClient()) {
-                        ServerRegistrationRequest request = new ServerRegistrationRequest();
-                        if (File.Exists(jsonConfig)) {
-                            request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(File.ReadAllText(jsonConfig));
-                        }
                         request.GetList = false;
                         string jsonRequest = JsonConvert.SerializeObject(request);
                         httpClient.BaseAddress = new Uri(_primaryRelayServer);
