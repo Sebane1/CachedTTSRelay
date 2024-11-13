@@ -13,6 +13,7 @@ namespace CachedTTSRelay {
     internal class Program {
         private static string _version;
         private static ServerRegistrationManager _serverRegistrationManager;
+        private static ServerRegistrationRequest _request;
 
         public static string ReplaceInvalidChars(string filename) {
             return string.Join("_", filename.Split(Path.GetInvalidFileNameChars()));
@@ -60,11 +61,17 @@ namespace CachedTTSRelay {
 
         private static void StartAudioRelay() {
             Task.Run(async () => {
+                string jsonConfig = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
+                if (File.Exists(jsonConfig)) {
+                    _request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(File.ReadAllText(jsonConfig));
+                } else {
+                    _request.Port = "5670";
+                }
                 NPCVoiceManager mediaManager = new NPCVoiceManager(
                     await NPCVoiceMapping.GetVoiceMappings(), await NPCVoiceMapping.GetCharacterToCacheType(),
                     AppDomain.CurrentDomain.BaseDirectory, "7fe29e49-2d45-423d-8efc-d8e2c1ceaf6d");
                 HttpListener ttsListener = new HttpListener();
-                ttsListener.Prefixes.Add("http://*:5670/");
+                ttsListener.Prefixes.Add("http://*:" + _request.Port + @"/");
                 try {
                     ttsListener.Start();
                 } catch {
