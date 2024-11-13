@@ -104,7 +104,7 @@ namespace CachedTTSRelay {
             });
             _ = Task.Run(async () => {
                 while (true) {
-                    Console.WriteLine("Checking for old entries");
+                    Console.WriteLine("Checking for old server entries");
                     AddServerEntry(_request);
                     foreach (var serverEntries in _serverRegionList) {
                         List<string> oldEntries = new List<string>();
