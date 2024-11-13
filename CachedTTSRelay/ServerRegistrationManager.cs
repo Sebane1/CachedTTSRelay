@@ -37,6 +37,9 @@ namespace CachedTTSRelay {
             if (string.IsNullOrEmpty(_request.UniqueIdentifier)) {
                 _request.UniqueIdentifier = serverIdentifier;
             }
+            if (string.IsNullOrEmpty(_request.Alias)) {
+                _request.Alias = _request.Region + "-" + serverIdentifier;
+            }
             _request.GetList = false;
             HttpListener ttsListener = new HttpListener();
             ttsListener.Prefixes.Add("http://*:5677/");
