@@ -15,10 +15,26 @@ namespace CachedTTSRelay {
         string _serverIdentifier = "";
         string _primaryRelayServer = "";
         ConcurrentDictionary<string, Dictionary<string, ServerRegistrationRequest>> _serverRegionList = new ConcurrentDictionary<string, Dictionary<string, ServerRegistrationRequest>>();
+        private ServerRegistrationRequest _request;
+        public string ServerIdentifier { get => _serverIdentifier; set => _serverIdentifier = value; }
+        public string PrimaryRelayServer { get => _primaryRelayServer; set => _primaryRelayServer = value; }
+
         public ServerRegistrationManager(string serverIdentifier, string primaryServerRelay) {
             _mediaManager = new NPCVoiceManager(null, null, "", "");
             _serverIdentifier = serverIdentifier;
             _primaryRelayServer = primaryServerRelay;
+            string jsonConfig = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
+            _request = new ServerRegistrationRequest();
+            if (File.Exists(jsonConfig)) {
+                _request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(File.ReadAllText(jsonConfig));
+            }
+            if (string.IsNullOrEmpty(_request.Region)) {
+                _request.Region = RegionAndLanguageHelper.GetMachineCurrentLocation(5);
+            }
+            if (string.IsNullOrEmpty(_request.PublicHostAddress)) {
+                _request.PublicHostAddress = GetPublicIp().ToString();
+            }
+            _request.GetList = false;
             HttpListener ttsListener = new HttpListener();
             ttsListener.Prefixes.Add("http://*:5677/");
             try {
@@ -45,10 +61,7 @@ namespace CachedTTSRelay {
                                         }
                                         request.LastResponse = DateTime.UtcNow;
                                         if (await _mediaManager.VerifyServer(request.PublicHostAddress, request.Port)) {
-                                            if (!_serverRegionList.ContainsKey(request.Region)) {
-                                                _serverRegionList[request.Region] = new Dictionary<string, ServerRegistrationRequest>();
-                                            }
-                                            _serverRegionList[request.Region][request.UniqueIdentifier] = request;
+                                            AddServerEntry(request);
                                             ctx.Response.StatusCode = (int)HttpStatusCode.OK;
                                         }
                                     } else {
@@ -70,18 +83,9 @@ namespace CachedTTSRelay {
             });
             _ = Task.Run(async () => {
                 Console.WriteLine("Registering Server Heartbeat");
-                string jsonConfig = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
-                ServerRegistrationRequest request = new ServerRegistrationRequest();
-                if (File.Exists(jsonConfig)) {
-                    request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(File.ReadAllText(jsonConfig));
-                }
-                if (string.IsNullOrEmpty(request.Region)) {
-                    request.Region = RegionAndLanguageHelper.GetMachineCurrentLocation(5);
-                }
                 while (true) {
                     using (HttpClient httpClient = new HttpClient()) {
-                        request.GetList = false;
-                        string jsonRequest = JsonConvert.SerializeObject(request);
+                        string jsonRequest = JsonConvert.SerializeObject(_request);
                         httpClient.BaseAddress = new Uri(_primaryRelayServer);
                         httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                         httpClient.Timeout = new TimeSpan(0, 6, 0);
@@ -96,6 +100,7 @@ namespace CachedTTSRelay {
             _ = Task.Run(async () => {
                 while (true) {
                     Console.WriteLine("Checking for old entries");
+                    AddServerEntry(_request);
                     foreach (var serverEntries in _serverRegionList) {
                         List<string> oldEntries = new List<string>();
                         foreach (var entry in serverEntries.Value) {
@@ -112,6 +117,15 @@ namespace CachedTTSRelay {
             });
         }
 
-        public string ServerIdentifier { get => _serverIdentifier; set => _serverIdentifier = value; }
+        private void AddServerEntry(ServerRegistrationRequest request) {
+            if (!_serverRegionList.ContainsKey(request.Region)) {
+                _serverRegionList[request.Region] = new Dictionary<string, ServerRegistrationRequest>();
+            }
+            _serverRegionList[request.Region][request.UniqueIdentifier] = request;
+        }
+
+        static System.Net.IPAddress GetPublicIp(string serviceUrl = "https://ipinfo.io/ip") {
+            return System.Net.IPAddress.Parse(new System.Net.WebClient().DownloadString(serviceUrl));
+        }
     }
 }
