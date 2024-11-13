@@ -44,63 +44,69 @@ namespace CachedTTSRelay {
                 };
             }
             if (launchForm) {
-                Task.Run(async () => {
-                    NPCVoiceManager mediaManager = new NPCVoiceManager(
-                        await NPCVoiceMapping.GetVoiceMappings(), await NPCVoiceMapping.GetCharacterToCacheType(),
-                        AppDomain.CurrentDomain.BaseDirectory, "7fe29e49-2d45-423d-8efc-d8e2c1ceaf6d");
-                    HttpListener ttsListener = new HttpListener();
-                    ttsListener.Prefixes.Add("http://*:5670/");
-                    try {
-                        ttsListener.Start();
-                    } catch {
-                        Console.WriteLine("TTS Listener Failed To Run");
-                    }
-                    _ = Task.Run(() => {
-                        Console.WriteLine("Server started");
-                        while (true) {
-                            try {
-                                HttpListenerContext ctx = ttsListener.GetContext();
-                                Task.Run(async () => {
-                                    using (HttpListenerResponse resp = ctx.Response) {
-                                        using (StreamReader reader = new StreamReader(ctx.Request.InputStream)) {
-                                            try {
-                                                Stopwatch profilingTimer = Stopwatch.StartNew();
-                                                string json = reader.ReadToEnd();
-                                                ProxiedVoiceRequest request = JsonConvert.DeserializeObject<ProxiedVoiceRequest>(json);
-                                                string voiceCacheUsed = string.Empty;
-                                                if (request != null) {
-                                                    if (request.VoiceLinePriority != VoiceLinePriority.SendNote
-                                                    && request.VoiceLinePriority != VoiceLinePriority.Datamining) {
-                                                        var generatedLine = await mediaManager.GetCharacterAudio(resp.OutputStream,
-                                                         request.Text, request.UnfilteredText, request.RawText,
-                                                         request.Character, !JsonConvert.DeserializeObject<ReportData>(request.ExtraJsonData).gender,
-                                                         request.Voice, false, GetVoiceModel(request.Model), request.ExtraJsonData, request.RedoLine,
-                                                         request.Override, request.VoiceLinePriority == VoiceLinePriority.Ignore, request.VoiceLinePriority, resp);
-                                                        //if (generatedLine.Item1 != null && resp != null && resp.OutputStream != null) {
-                                                        //    await generatedLine.Item1.CopyToAsync(resp.OutputStream);
-                                                        //}
-                                                        await resp.OutputStream.FlushAsync();
-                                                        resp.Close();
-                                                    }
-                                                    Console.WriteLine("TTS processed and sent! " + profilingTimer.Elapsed);
-                                                    profilingTimer.Stop();
-                                                }
-                                            } catch (Exception e) {
-                                                Console.WriteLine(e.Message + " " + e);
-                                            }
-                                        }
-                                    }
-                                });
-                            } catch (Exception e) {
-                                Console.WriteLine(e.Message);
-                            }
-                        }
-                    });
-                });
+                StartServerListService();
+                StartAudioRelay();
                 while (true) {
                     Thread.Sleep(60000);
                 }
             }
+        }
+
+        private static void StartServerListService() {
+
+        }
+
+        private static void StartAudioRelay() {
+            Task.Run(async () => {
+                NPCVoiceManager mediaManager = new NPCVoiceManager(
+                    await NPCVoiceMapping.GetVoiceMappings(), await NPCVoiceMapping.GetCharacterToCacheType(),
+                    AppDomain.CurrentDomain.BaseDirectory, "7fe29e49-2d45-423d-8efc-d8e2c1ceaf6d");
+                HttpListener ttsListener = new HttpListener();
+                ttsListener.Prefixes.Add("http://*:5670/");
+                try {
+                    ttsListener.Start();
+                } catch {
+                    Console.WriteLine("TTS Listener Failed To Run");
+                }
+                _ = Task.Run(() => {
+                    Console.WriteLine("Server started");
+                    while (true) {
+                        try {
+                            HttpListenerContext ctx = ttsListener.GetContext();
+                            Task.Run(async () => {
+                                using (HttpListenerResponse resp = ctx.Response) {
+                                    using (StreamReader reader = new StreamReader(ctx.Request.InputStream)) {
+                                        try {
+                                            Stopwatch profilingTimer = Stopwatch.StartNew();
+                                            string json = reader.ReadToEnd();
+                                            ProxiedVoiceRequest request = JsonConvert.DeserializeObject<ProxiedVoiceRequest>(json);
+                                            string voiceCacheUsed = string.Empty;
+                                            if (request != null) {
+                                                if (request.VoiceLinePriority != VoiceLinePriority.SendNote
+                                                && request.VoiceLinePriority != VoiceLinePriority.Datamining) {
+                                                    var generatedLine = await mediaManager.GetCharacterAudio(resp.OutputStream,
+                                                     request.Text, request.UnfilteredText, request.RawText,
+                                                     request.Character, !JsonConvert.DeserializeObject<ReportData>(request.ExtraJsonData).gender,
+                                                     request.Voice, false, GetVoiceModel(request.Model), request.ExtraJsonData, request.RedoLine,
+                                                     request.Override, request.VoiceLinePriority == VoiceLinePriority.Ignore, request.VoiceLinePriority, resp);
+                                                    await resp.OutputStream.FlushAsync();
+                                                    resp.Close();
+                                                }
+                                                Console.WriteLine("TTS processed and sent! " + profilingTimer.Elapsed);
+                                                profilingTimer.Stop();
+                                            }
+                                        } catch (Exception e) {
+                                            Console.WriteLine(e.Message + " " + e);
+                                        }
+                                    }
+                                }
+                            });
+                        } catch (Exception e) {
+                            Console.WriteLine(e.Message);
+                        }
+                    }
+                });
+            });
         }
     }
 }
