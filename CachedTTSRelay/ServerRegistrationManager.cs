@@ -106,7 +106,7 @@ namespace CachedTTSRelay {
                     foreach (var serverEntries in _serverRegionList) {
                         List<string> oldEntries = new List<string>();
                         foreach (var entry in serverEntries.Value) {
-                            if (DateTime.UtcNow.Subtract(entry.Value.LastResponse).TotalMinutes > 120000) {
+                            if (DateTime.UtcNow.Subtract(new DateTime(entry.Value.LastResponse)).TotalMinutes > 120000) {
                                 oldEntries.Add(entry.Key);
                             }
                         }
@@ -120,12 +120,12 @@ namespace CachedTTSRelay {
         }
 
         private void AddServerEntry(ServerRegistrationRequest request) {
-            request.LastResponse = DateTime.UtcNow;
+            request.LastResponse = DateTime.UtcNow.Ticks;
             if (!_serverRegionList.ContainsKey(request.Region)) {
                 _serverRegionList[request.Region] = new Dictionary<string, ServerRegistrationRequest>();
             }
             _serverRegionList[request.Region][request.UniqueIdentifier] = request;
-            Console.WriteLine("Heartbeat received from " + request.Alias); 
+            Console.WriteLine("Heartbeat received from " + request.Alias);
         }
 
         static System.Net.IPAddress GetPublicIp(string serviceUrl = "https://ipinfo.io/ip") {
