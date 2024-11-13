@@ -65,7 +65,6 @@ namespace CachedTTSRelay {
                                         if (string.IsNullOrEmpty(request.Port)) {
                                             request.Port = "5670";
                                         }
-                                        request.LastResponse = DateTime.UtcNow;
                                         if (await _mediaManager.VerifyServer(request.PublicHostAddress, request.Port)) {
                                             AddServerEntry(request);
                                             ctx.Response.StatusCode = (int)HttpStatusCode.OK;
@@ -124,6 +123,7 @@ namespace CachedTTSRelay {
         }
 
         private void AddServerEntry(ServerRegistrationRequest request) {
+            request.LastResponse = DateTime.UtcNow;
             if (!_serverRegionList.ContainsKey(request.Region)) {
                 _serverRegionList[request.Region] = new Dictionary<string, ServerRegistrationRequest>();
             }
