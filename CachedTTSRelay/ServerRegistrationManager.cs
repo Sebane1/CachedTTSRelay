@@ -125,6 +125,7 @@ namespace CachedTTSRelay {
                 _serverRegionList[request.Region] = new Dictionary<string, ServerRegistrationRequest>();
             }
             _serverRegionList[request.Region][request.UniqueIdentifier] = request;
+            Console.WriteLine("Heartbeat received from " + request.Alias); 
         }
 
         static System.Net.IPAddress GetPublicIp(string serviceUrl = "https://ipinfo.io/ip") {
