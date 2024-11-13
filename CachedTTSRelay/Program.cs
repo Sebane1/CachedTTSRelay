@@ -98,7 +98,8 @@ namespace CachedTTSRelay {
                                                      request.Text, request.UnfilteredText, request.RawText,
                                                      request.Character, !JsonConvert.DeserializeObject<ReportData>(request.ExtraJsonData).gender,
                                                      request.Voice, false, GetVoiceModel(request.Model), request.ExtraJsonData, request.RedoLine,
-                                                     request.Override, request.VoiceLinePriority == VoiceLinePriority.Ignore, request.VoiceLinePriority, resp);
+                                                     request.Override, request.VoiceLinePriority == VoiceLinePriority.Ignore, request.VoiceLinePriority,
+                                                     NPCVoiceMapping.CheckIfCacheOnly(), resp);
                                                     await resp.OutputStream.FlushAsync();
                                                     resp.Close();
                                                 }

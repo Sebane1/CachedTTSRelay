@@ -102,6 +102,12 @@ namespace RoleplayingVoiceDalamud.Voice {
             });
             return _npcVoiceConfiguration.PitchValuesList;
         }
+        public static bool CheckIfCacheOnly() {
+            Task.Run(() => {
+                CheckForUpdates();
+            });
+            return _npcVoiceConfiguration.CacheOnly;
+        }
 
         public static async Task<Dictionary<string, VoiceLinePriority>> GetCharacterToCacheType() {
             Task.Run(() => {
