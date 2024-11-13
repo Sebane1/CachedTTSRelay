@@ -17,6 +17,8 @@ public static class RegionAndLanguageHelper {
 
     #endregion
 
+
+#if WINDOWS
     #region Win32 Declarations
 
     [DllImport("kernel32.dll", ExactSpelling = true, CallingConvention = CallingConvention.StdCall, SetLastError = true)]
@@ -27,9 +29,8 @@ public static class RegionAndLanguageHelper {
 
     [DllImport("kernel32.dll")]
     private static extern int GetGeoInfo(int geoid, int geoType, StringBuilder lpGeoData, int cchData, int langid);
-
     #endregion
-
+#endif
     #region Public Methods
 
     /// <summary>
@@ -38,11 +39,15 @@ public static class RegionAndLanguageHelper {
     /// <param name="geoFriendlyname"></param>
     public static string GetMachineCurrentLocation(int geoFriendlyname) {
         try {
+            string value = "Unknown";
+#if WINDOWS
             int geoId = GetUserGeoID(GeoClass.Nation);
             int lcid = GetUserDefaultLCID();
             StringBuilder locationBuffer = new StringBuilder(100);
             GetGeoInfo(geoId, geoFriendlyname, locationBuffer, locationBuffer.Capacity, lcid);
-            string value = locationBuffer.ToString().Trim();
+            value = locationBuffer.ToString().Trim();
+#endif
+            // Todo: How do we detect region on non windows platforms.
             return value;
         } catch {
             return "Unknown";

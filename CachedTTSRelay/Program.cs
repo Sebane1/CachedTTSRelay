@@ -1,6 +1,5 @@
 ﻿using AutoUpdaterDotNET;
 using Newtonsoft.Json;
-using RoleplayingMediaCore;
 using RoleplayingVoiceCore;
 using RoleplayingVoiceDalamud.Datamining;
 using RoleplayingVoiceDalamud.Voice;
