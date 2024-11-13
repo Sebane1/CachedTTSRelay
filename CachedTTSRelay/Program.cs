@@ -65,6 +65,7 @@ namespace CachedTTSRelay {
                 if (File.Exists(jsonConfig)) {
                     _request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(File.ReadAllText(jsonConfig));
                 } else {
+                    _request = new ServerRegistrationRequest();
                     _request.Port = "5670";
                 }
                 NPCVoiceManager mediaManager = new NPCVoiceManager(
