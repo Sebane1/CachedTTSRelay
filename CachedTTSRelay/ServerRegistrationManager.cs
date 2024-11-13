@@ -34,6 +34,9 @@ namespace CachedTTSRelay {
             if (string.IsNullOrEmpty(_request.PublicHostAddress)) {
                 _request.PublicHostAddress = GetPublicIp().ToString();
             }
+            if (string.IsNullOrEmpty(_request.UniqueIdentifier)) {
+                _request.UniqueIdentifier = serverIdentifier;
+            }
             _request.GetList = false;
             HttpListener ttsListener = new HttpListener();
             ttsListener.Prefixes.Add("http://*:5677/");
