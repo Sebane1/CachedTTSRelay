@@ -1,12 +1,7 @@
 ﻿using Newtonsoft.Json;
 using RoleplayingVoiceCore;
 using RoleplayingVoiceDalamud.Datamining;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Net.Http;
-using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace RoleplayingVoiceDalamud.Voice {
     public static class NPCVoiceMapping {
