@@ -11,6 +11,7 @@ namespace CachedTTSRelay {
         private string _region = "";
         private string _alias = "";
         private string _uniqueIdentifier = "";
+        private bool _getList;
         private DateTime _lastResponse;
 
         public string PublicHostAddress { get => _publicHostAddress; set => _publicHostAddress = value; }
@@ -19,5 +20,6 @@ namespace CachedTTSRelay {
         public string Alias { get => _alias; set => _alias = value; }
         public string UniqueIdentifier { get => _uniqueIdentifier; set => _uniqueIdentifier = value; }
         public DateTime LastResponse { get => _lastResponse; set => _lastResponse = value; }
+        public bool GetList { get => _getList; set => _getList = value; }
     }
 }
