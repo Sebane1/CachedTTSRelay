@@ -15,9 +15,10 @@ namespace CachedTTSRelay {
         string _serverIdentifier = "";
         string _primaryRelayServer = "";
         ConcurrentDictionary<string, Dictionary<string, ServerRegistrationRequest>> _serverRegionList = new ConcurrentDictionary<string, Dictionary<string, ServerRegistrationRequest>>();
-        public ServerRegistrationManager(string serverIdentifier) {
+        public ServerRegistrationManager(string serverIdentifier, string primaryServerRelay) {
             _mediaManager = new NPCVoiceManager(null, null, "", "");
             _serverIdentifier = serverIdentifier;
+            _primaryRelayServer = primaryServerRelay;
             HttpListener ttsListener = new HttpListener();
             ttsListener.Prefixes.Add("http://*:5677/");
             try {

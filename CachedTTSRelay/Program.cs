@@ -54,7 +54,8 @@ namespace CachedTTSRelay {
         }
 
         private static void StartServerListService() {
-            _serverRegistrationManager = new ServerRegistrationManager(NPCVoiceManager.CreateMD5(Environment.MachineName + Environment.UserName + Environment.ProcessPath));
+            string id = NPCVoiceManager.CreateMD5(Environment.MachineName + Environment.UserName + Environment.ProcessPath);
+            _serverRegistrationManager = new ServerRegistrationManager(id, "ai.hubujubu.com:5677");
         }
 
         private static void StartAudioRelay() {
