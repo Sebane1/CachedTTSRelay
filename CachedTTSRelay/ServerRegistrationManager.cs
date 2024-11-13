@@ -50,31 +50,35 @@ namespace CachedTTSRelay {
                         try {
                             HttpListenerContext ctx = ttsListener.GetContext();
                             Task.Run(async () => {
-                                using (HttpListenerResponse resp = ctx.Response) {
-                                    using (StreamReader reader = new StreamReader(ctx.Request.InputStream)) {
-                                        string json = reader.ReadToEnd();
-                                        ServerRegistrationRequest request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(json);
-                                        if (!request.GetList) {
-                                            if (string.IsNullOrEmpty(request.PublicHostAddress)) {
-                                                request.PublicHostAddress = ctx.Request.RemoteEndPoint.Address.ToString();
-                                            }
-                                            if (string.IsNullOrEmpty(request.Port)) {
-                                                request.Port = "5670";
-                                            }
-                                            if (await _mediaManager.VerifyServer(request.PublicHostAddress, request.Port)) {
-                                                AddServerEntry(request);
+                                try {
+                                    using (HttpListenerResponse resp = ctx.Response) {
+                                        using (StreamReader reader = new StreamReader(ctx.Request.InputStream)) {
+                                            string json = reader.ReadToEnd();
+                                            ServerRegistrationRequest request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(json);
+                                            if (!request.GetList) {
+                                                if (string.IsNullOrEmpty(request.PublicHostAddress)) {
+                                                    request.PublicHostAddress = ctx.Request.RemoteEndPoint.Address.ToString();
+                                                }
+                                                if (string.IsNullOrEmpty(request.Port)) {
+                                                    request.Port = "5670";
+                                                }
+                                                if (await _mediaManager.VerifyServer(request.PublicHostAddress, request.Port)) {
+                                                    AddServerEntry(request);
+                                                    ctx.Response.StatusCode = (int)HttpStatusCode.OK;
+                                                }
+                                            } else {
                                                 ctx.Response.StatusCode = (int)HttpStatusCode.OK;
+                                                string serverListData = JsonConvert.SerializeObject(_serverRegionList);
+                                                using (StreamWriter writer = new StreamWriter(resp.OutputStream)) {
+                                                    await writer.WriteAsync(serverListData);
+                                                    await writer.FlushAsync();
+                                                }
                                             }
-                                        } else {
-                                            ctx.Response.StatusCode = (int)HttpStatusCode.OK;
-                                            string serverListData = JsonConvert.SerializeObject(_serverRegionList);
-                                            using (StreamWriter writer = new StreamWriter(resp.OutputStream)) {
-                                                await writer.WriteAsync(serverListData);
-                                                await writer.FlushAsync();
-                                            }
+                                            resp.Close();
                                         }
-                                        resp.Close();
                                     }
+                                } catch (Exception e) {
+                                    Console.WriteLine(e.ToString());
                                 }
                             });
                         } catch {
