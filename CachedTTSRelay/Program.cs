@@ -90,12 +90,13 @@ namespace CachedTTSRelay {
                                             string json = reader.ReadToEnd();
                                             ProxiedVoiceRequest request = JsonConvert.DeserializeObject<ProxiedVoiceRequest>(json);
                                             string voiceCacheUsed = string.Empty;
+                                            bool genderBool = !string.IsNullOrEmpty(request.ExtraJsonData) ? JsonConvert.DeserializeObject<ReportData>(request.ExtraJsonData).gender : false;
                                             if (request != null) {
                                                 if (request.VoiceLinePriority != VoiceLinePriority.SendNote
                                                 && request.VoiceLinePriority != VoiceLinePriority.Datamining) {
                                                     var generatedLine = await mediaManager.GetCharacterAudio(resp.OutputStream,
                                                      request.Text, request.UnfilteredText, request.RawText,
-                                                     request.Character, !JsonConvert.DeserializeObject<ReportData>(request.ExtraJsonData).gender,
+                                                     request.Character, genderBool,
                                                      request.Voice, false, GetVoiceModel(request.Model), request.ExtraJsonData, request.RedoLine,
                                                      request.Override, request.VoiceLinePriority == VoiceLinePriority.Ignore, request.VoiceLinePriority,
                                                      NPCVoiceMapping.CheckIfCacheOnly(), resp);
