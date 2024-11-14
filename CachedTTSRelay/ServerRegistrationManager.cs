@@ -3,13 +3,15 @@ using RoleplayingVoiceCore;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Numerics;
 
 namespace CachedTTSRelay {
     public class ServerRegistrationManager {
         private NPCVoiceManager _mediaManager;
         string _serverIdentifier = "";
         string _primaryRelayServer = "";
-        ConcurrentDictionary<string, Dictionary<string, ServerRegistrationRequest>> _serverRegionList = new ConcurrentDictionary<string, Dictionary<string, ServerRegistrationRequest>>();
+        ConcurrentDictionary<string, ConcurrentDictionary<string, ServerRegistrationRequest>> _serverRegionList = new ConcurrentDictionary<string, ConcurrentDictionary<string, ServerRegistrationRequest>>();
+        ConcurrentDictionary<string, ServerRegistrationRequest> _serverList = new ConcurrentDictionary<string, ServerRegistrationRequest>();
         private ServerRegistrationRequest _request;
         public string ServerIdentifier { get => _serverIdentifier; set => _serverIdentifier = value; }
         public string PrimaryRelayServer { get => _primaryRelayServer; set => _primaryRelayServer = value; }
@@ -23,9 +25,14 @@ namespace CachedTTSRelay {
             if (File.Exists(jsonConfig)) {
                 _request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(File.ReadAllText(jsonConfig));
             }
+#if WINDOWS
             if (string.IsNullOrEmpty(_request.Region)) {
                 _request.Region = RegionAndLanguageHelper.GetMachineCurrentLocation(5);
+                float x = float.Parse(RegionAndLanguageHelper.GetMachineCurrentLocation(2));
+                float y = float.Parse(RegionAndLanguageHelper.GetMachineCurrentLocation(3));
+                _request.HardwareRegionLocation = new System.Numerics.Vector2(x, y);
             }
+#endif
             if (string.IsNullOrEmpty(_request.PublicHostAddress)) {
                 _request.PublicHostAddress = GetPublicIp().ToString();
             }
@@ -35,7 +42,7 @@ namespace CachedTTSRelay {
             if (string.IsNullOrEmpty(_request.Alias)) {
                 _request.Alias = _request.Region + "-" + serverIdentifier;
             }
-            _request.GetList = false;
+            _request.GetNearestIp = false;
             HttpListener ttsListener = new HttpListener();
             ttsListener.Prefixes.Add("http://*:5677/");
             try {
@@ -55,7 +62,7 @@ namespace CachedTTSRelay {
                                         using (StreamReader reader = new StreamReader(ctx.Request.InputStream)) {
                                             string json = reader.ReadToEnd();
                                             ServerRegistrationRequest request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(json);
-                                            if (!request.GetList) {
+                                            if (!request.GetNearestIp) {
                                                 if (string.IsNullOrEmpty(request.PublicHostAddress)) {
                                                     request.PublicHostAddress = ctx.Request.RemoteEndPoint.Address.ToString();
                                                 }
@@ -68,9 +75,10 @@ namespace CachedTTSRelay {
                                                 }
                                             } else {
                                                 ctx.Response.StatusCode = (int)HttpStatusCode.OK;
-                                                string serverListData = JsonConvert.SerializeObject(_serverRegionList);
+                                                var closestServer = GetServerEntry(request);
+                                                string serverHostData = JsonConvert.SerializeObject(closestServer);
                                                 using (StreamWriter writer = new StreamWriter(resp.OutputStream)) {
-                                                    await writer.WriteAsync(serverListData);
+                                                    await writer.WriteAsync(serverHostData);
                                                     await writer.FlushAsync();
                                                 }
                                             }
@@ -114,7 +122,8 @@ namespace CachedTTSRelay {
                             }
                         }
                         foreach (var oldEntry in oldEntries) {
-                            serverEntries.Value.Remove(oldEntry);
+                            serverEntries.Value.TryRemove(oldEntry, out var value);
+                            _serverList.TryRemove(oldEntry, out value);
                         }
                     }
                     Thread.Sleep(65000);
@@ -122,10 +131,29 @@ namespace CachedTTSRelay {
             });
         }
 
+        private ServerRegistrationRequest GetServerEntry(ServerRegistrationRequest request) {
+            ServerRegistrationRequest closestServer = null;
+            float lastClosestDistance = float.MaxValue;
+            foreach (var entry in _serverList) {
+                float nextDistance = Vector2.Distance(request.HardwareRegionLocation, entry.Value.HardwareRegionLocation);
+                if (closestServer == null || nextDistance < lastClosestDistance) {
+                    closestServer = entry.Value;
+                    lastClosestDistance = Vector2.Distance(request.HardwareRegionLocation, closestServer.HardwareRegionLocation);
+                }
+            }
+            if (closestServer != null) {
+                closestServer.Region = "";
+                closestServer.HardwareRegionLocation = new Vector2();
+                closestServer.Alias = "";
+                closestServer.UniqueIdentifier = "";
+            }
+            return closestServer;
+        }
+
         private void AddServerEntry(ServerRegistrationRequest request) {
             request.LastResponse = DateTime.UtcNow.Ticks;
             if (!_serverRegionList.ContainsKey(request.Region)) {
-                _serverRegionList[request.Region] = new Dictionary<string, ServerRegistrationRequest>();
+                _serverRegionList[request.Region] = new ConcurrentDictionary<string, ServerRegistrationRequest>();
             }
             _serverRegionList[request.Region][request.UniqueIdentifier] = request;
             Console.WriteLine("Heartbeat received from " + request.Alias);
