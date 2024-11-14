@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿using IPinfo;
+using IPinfo.Models;
+using Newtonsoft.Json;
 using RoleplayingVoiceCore;
 using System.Collections.Concurrent;
 using System.Net;
@@ -17,6 +19,10 @@ namespace CachedTTSRelay {
         public string PrimaryRelayServer { get => _primaryRelayServer; set => _primaryRelayServer = value; }
 
         public ServerRegistrationManager(string serverIdentifier, string primaryServerRelay) {
+            Initialize(serverIdentifier, primaryServerRelay);
+        }
+
+        private async void Initialize(string serverIdentifier, string primaryServerRelay) {
             _mediaManager = new NPCVoiceManager(null, null, "", "");
             _serverIdentifier = serverIdentifier;
             _primaryRelayServer = primaryServerRelay;
@@ -25,14 +31,11 @@ namespace CachedTTSRelay {
             if (File.Exists(jsonConfig)) {
                 _request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(File.ReadAllText(jsonConfig));
             }
-#if WINDOWS
-            if (string.IsNullOrEmpty(_request.Region)) {
-                _request.Region = RegionAndLanguageHelper.GetMachineCurrentLocation(5);
-                float x = float.Parse(RegionAndLanguageHelper.GetMachineCurrentLocation(2));
-                float y = float.Parse(RegionAndLanguageHelper.GetMachineCurrentLocation(3));
-                _request.HardwareRegionLocation = new System.Numerics.Vector2(x, y);
-            }
-#endif
+            var ipInfo = await GetServerLocation(GetPublicIp().ToString());
+            _request.Region = ipInfo.Region;
+            float x = float.Parse(ipInfo.Latitude);
+            float y = float.Parse(ipInfo.Longitude);
+            _request.HardwareRegionLocation = new System.Numerics.Vector2(x, y);
             if (string.IsNullOrEmpty(_request.PublicHostAddress)) {
                 _request.PublicHostAddress = GetPublicIp().ToString();
             }
@@ -159,8 +162,17 @@ namespace CachedTTSRelay {
             Console.WriteLine("Heartbeat received from " + request.Alias);
         }
 
-        static System.Net.IPAddress GetPublicIp(string serviceUrl = "https://ipinfo.io/ip") {
+        public static System.Net.IPAddress GetPublicIp(string serviceUrl = "https://ipinfo.io/ip") {
             return System.Net.IPAddress.Parse(new System.Net.WebClient().DownloadString(serviceUrl));
+        }
+
+        public async static Task<IPResponse> GetServerLocation(string ip) {
+            // initializing IPinfo client
+            string token = "ed75487d525930";
+            IPinfoClient client = new IPinfoClient.Builder()
+                .AccessToken(token)
+                .Build();
+            return await client.IPApi.GetDetailsAsync(ip);
         }
     }
 }
