@@ -43,7 +43,7 @@ namespace CachedTTSRelay {
                 _request.UniqueIdentifier = serverIdentifier;
             }
             if (string.IsNullOrEmpty(_request.Alias)) {
-                _request.Alias = _request.Region + "-" + serverIdentifier;
+                _request.Alias = ipInfo.Country + "-" + serverIdentifier;
             }
             _request.GetNearestIp = false;
             HttpListener ttsListener = new HttpListener();
