@@ -91,11 +91,10 @@ namespace CachedTTSRelay {
                 Console.WriteLine("Registering Server Heartbeat");
                 while (true) {
                     using (HttpClient httpClient = new HttpClient()) {
-                        string jsonRequest = JsonConvert.SerializeObject(_request);
                         httpClient.BaseAddress = new Uri(_primaryRelayServer);
                         httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
                         httpClient.Timeout = new TimeSpan(0, 6, 0);
-                        var post = await httpClient.PostAsync(httpClient.BaseAddress, new StringContent(JsonConvert.SerializeObject(jsonRequest)));
+                        var post = await httpClient.PostAsync(httpClient.BaseAddress, new StringContent(JsonConvert.SerializeObject(_request)));
                         if (post.StatusCode == HttpStatusCode.OK) {
                             Console.WriteLine("Server registration updated.");
                         }
