@@ -30,7 +30,13 @@ namespace RoleplayingVoiceDalamud.Voice {
                     _speakerList = JsonConvert.DeserializeObject<Dictionary<string, ReportData>>(json);
                     _npcBubbleRecovery.Clear();
                     foreach (var item in _speakerList) {
-                        _npcBubbleRecovery.Add(item.Value.npcid, item.Key);
+                        try {
+                            if (!_npcBubbleRecovery.ContainsKey(item.Value.npcid)) {
+                                _npcBubbleRecovery.Add(item.Value.npcid, item.Key);
+                            }
+                        } catch {
+
+                        }
                     }
                     alreadyLoaded = true;
                 }
