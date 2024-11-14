@@ -31,7 +31,7 @@ namespace CachedTTSRelay {
             if (File.Exists(jsonConfig)) {
                 _request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(File.ReadAllText(jsonConfig));
             }
-            var ipInfo = await GetServerLocation(GetPublicIp().ToString());
+            var ipInfo = await GetHardwareLocation(GetPublicIp().ToString());
             _request.Region = ipInfo.Region;
             float x = float.Parse(ipInfo.Latitude);
             float y = float.Parse(ipInfo.Longitude);
@@ -78,6 +78,12 @@ namespace CachedTTSRelay {
                                                 }
                                             } else {
                                                 ctx.Response.StatusCode = (int)HttpStatusCode.OK;
+                                                try {
+                                                    var data = await GetHardwareLocation(ctx.Request.RemoteEndPoint.Address.ToString());
+                                                    request.HardwareRegionLocation = new Vector2(float.Parse(data.Latitude), float.Parse(data.Longitude));
+                                                } catch {
+
+                                                }
                                                 var closestServer = GetServerEntry(request);
                                                 string serverHostData = JsonConvert.SerializeObject(closestServer);
                                                 using (StreamWriter writer = new StreamWriter(resp.OutputStream)) {
@@ -166,7 +172,7 @@ namespace CachedTTSRelay {
             return System.Net.IPAddress.Parse(new System.Net.WebClient().DownloadString(serviceUrl));
         }
 
-        public async static Task<IPResponse> GetServerLocation(string ip) {
+        public async static Task<IPResponse> GetHardwareLocation(string ip) {
             // initializing IPinfo client
             string token = "ed75487d525930";
             IPinfoClient client = new IPinfoClient.Builder()
