@@ -164,6 +164,7 @@ namespace CachedTTSRelay {
                 _serverRegionList[request.Region] = new ConcurrentDictionary<string, ServerRegistrationRequest>();
             }
             _serverRegionList[request.Region][request.UniqueIdentifier] = request;
+            _serverList[request.UniqueIdentifier] = request;
             Console.WriteLine("Heartbeat received from " + request.Alias);
         }
 
