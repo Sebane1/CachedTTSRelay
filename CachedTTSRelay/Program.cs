@@ -69,7 +69,7 @@ namespace CachedTTSRelay {
                 }
                 NPCVoiceManager mediaManager = new NPCVoiceManager(
                     await NPCVoiceMapping.GetVoiceMappings(), await NPCVoiceMapping.GetCharacterToCacheType(),
-                    AppDomain.CurrentDomain.BaseDirectory, "7fe29e49-2d45-423d-8efc-d8e2c1ceaf6d");
+                    AppDomain.CurrentDomain.BaseDirectory, "7fe29e49-2d45-423d-8efc-d8e2c1ceaf6d", true);
                 HttpListener ttsListener = new HttpListener();
                 ttsListener.Prefixes.Add("http://*:" + _request.Port + @"/");
                 try {

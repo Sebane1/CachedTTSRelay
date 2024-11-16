@@ -23,7 +23,7 @@ namespace CachedTTSRelay {
         }
 
         private async void Initialize(string serverIdentifier, string primaryServerRelay) {
-            _mediaManager = new NPCVoiceManager(null, null, "", "");
+            _mediaManager = new NPCVoiceManager(null, null, "", "", true);
             _serverIdentifier = serverIdentifier;
             _primaryRelayServer = primaryServerRelay;
             string jsonConfig = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
@@ -153,7 +153,6 @@ namespace CachedTTSRelay {
             if (closestServer != null) {
                 closestServer.Region = "";
                 closestServer.HardwareRegionLocation = new Vector2();
-                closestServer.Alias = "";
                 closestServer.UniqueIdentifier = "";
             }
             return closestServer;
