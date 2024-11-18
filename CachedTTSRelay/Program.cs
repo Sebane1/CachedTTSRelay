@@ -100,8 +100,6 @@ namespace CachedTTSRelay {
                                                      request.Voice, false, GetVoiceModel(request.Model), request.ExtraJsonData, request.RedoLine,
                                                      request.Override, request.VoiceLinePriority == VoiceLinePriority.Ignore, request.VoiceLinePriority,
                                                      NPCVoiceMapping.CheckIfCacheOnly(), resp);
-                                                    await resp.OutputStream.FlushAsync();
-                                                    resp.Close();
                                                 }
                                                 Console.WriteLine("TTS processed and sent! " + profilingTimer.Elapsed);
                                                 profilingTimer.Stop();
