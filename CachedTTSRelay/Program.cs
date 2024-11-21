@@ -13,6 +13,7 @@ namespace CachedTTSRelay {
         private static string _version;
         private static ServerRegistrationManager _serverRegistrationManager;
         private static ServerRegistrationRequest _request;
+        private static NPCVoiceManager _mediaManager;
 
         public static string ReplaceInvalidChars(string filename) {
             return string.Join("_", filename.Split(Path.GetInvalidFileNameChars()));
@@ -47,10 +48,49 @@ namespace CachedTTSRelay {
             if (launchForm) {
                 StartServerListService();
                 StartAudioRelay();
+                StartInformationService();
                 while (true) {
                     Thread.Sleep(60000);
                 }
             }
+        }
+
+        private static void StartInformationService() {
+            HttpListener informationListener = new HttpListener();
+            informationListener.Prefixes.Add("http://*:5684" + @"/");
+            try {
+                informationListener.Start();
+            } catch {
+                Console.WriteLine("Information Server Failed");
+            }
+            _ = Task.Run(() => {
+                Console.WriteLine("Information Server Started");
+                while (true) {
+                    HttpListenerContext ctx = informationListener.GetContext();
+                    Task.Run(async () => {
+                        using (HttpListenerResponse resp = ctx.Response) {
+                            using (BinaryReader reader = new BinaryReader(ctx.Request.InputStream)) {
+                                string json = reader.ReadString();
+                                InformationRequest request = JsonConvert.DeserializeObject<InformationRequest>(json);
+                                switch (request.InformationRequestType) {
+                                    case InformationRequestType.GetVoiceLineList:
+                                        string voiceLineList = JsonConvert.SerializeObject(_mediaManager.CharacterVoices);
+                                        using (StreamWriter streamWriter = new StreamWriter(resp.OutputStream)) {
+                                            streamWriter.Write(voiceLineList);
+                                        }
+                                        break;
+                                    case InformationRequestType.UploadVoiceLines:
+                                        string path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, request.Name + ".zip");
+                                        using (FileStream fileStream = new FileStream(path, FileMode.Create, FileAccess.Write)) {
+                                            await ctx.Request.InputStream.CopyToAsync(fileStream);
+                                        }
+                                        break;
+                                }
+                            }
+                        }
+                    });
+                }
+            });
         }
 
         private static void StartServerListService() {
@@ -60,6 +100,8 @@ namespace CachedTTSRelay {
 
         private static void StartAudioRelay() {
             Task.Run(async () => {
+                _mediaManager = new NPCVoiceManager(await NPCVoiceMapping.GetVoiceMappings(), await NPCVoiceMapping.GetCharacterToCacheType(),
+                AppDomain.CurrentDomain.BaseDirectory, "7fe29e49-2d45-423d-8efc-d8e2c1ceaf6d", true);
                 string jsonConfig = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.json");
                 if (File.Exists(jsonConfig)) {
                     _request = JsonConvert.DeserializeObject<ServerRegistrationRequest>(File.ReadAllText(jsonConfig));
@@ -67,9 +109,6 @@ namespace CachedTTSRelay {
                     _request = new ServerRegistrationRequest();
                     _request.Port = "5670";
                 }
-                NPCVoiceManager mediaManager = new NPCVoiceManager(
-                    await NPCVoiceMapping.GetVoiceMappings(), await NPCVoiceMapping.GetCharacterToCacheType(),
-                    AppDomain.CurrentDomain.BaseDirectory, "7fe29e49-2d45-423d-8efc-d8e2c1ceaf6d", true);
                 HttpListener ttsListener = new HttpListener();
                 ttsListener.Prefixes.Add("http://*:" + _request.Port + @"/");
                 try {
@@ -94,7 +133,7 @@ namespace CachedTTSRelay {
                                             if (request != null) {
                                                 if (request.VoiceLinePriority != VoiceLinePriority.SendNote
                                                 && request.VoiceLinePriority != VoiceLinePriority.Datamining) {
-                                                    var generatedLine = await mediaManager.GetCharacterAudio(resp.OutputStream,
+                                                    var generatedLine = await _mediaManager.GetCharacterAudio(resp.OutputStream,
                                                      request.Text, request.UnfilteredText, request.RawText,
                                                      request.Character, genderBool,
                                                      request.Voice, false, GetVoiceModel(request.Model), request.ExtraJsonData, request.RedoLine,
