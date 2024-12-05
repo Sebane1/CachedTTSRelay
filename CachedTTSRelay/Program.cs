@@ -1,11 +1,9 @@
-﻿using AutoUpdaterDotNET;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using RoleplayingVoiceCore;
 using RoleplayingVoiceDalamud.Datamining;
 using RoleplayingVoiceDalamud.Voice;
 using System.Diagnostics;
 using System.Net;
-using System.Windows.Forms;
 using static RoleplayingVoiceCore.NPCVoiceManager;
 
 namespace CachedTTSRelay {
@@ -30,22 +28,15 @@ namespace CachedTTSRelay {
             return VoiceModel.Cheap;
         }
         static void Main(string[] args) {
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
-            bool launchForm = true;
-            _version = Application.ProductVersion.Split('+')[0];
-            AutoUpdater.InstalledVersion = new Version(_version);
-            AutoUpdater.DownloadPath = Application.StartupPath;
-            AutoUpdater.Synchronous = true;
-            AutoUpdater.Mandatory = true;
-            AutoUpdater.UpdateMode = Mode.ForcedDownload;
+            bool shouldContinue = true;
+            _version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "0.0.0.0";
+            Console.WriteLine("Version: " + _version);
+            
             if (args.Length <= 1) {
-                AutoUpdater.Start("https://raw.githubusercontent.com/Sebane1/CachedTTSRelay/update.xml");
-                AutoUpdater.ApplicationExitEvent += delegate () {
-                    launchForm = false;
-                };
+                shouldContinue = CheckForUpdates().Result;
             }
-            if (launchForm) {
+            
+            if (shouldContinue) {
                 StartServerListService();
                 StartAudioRelay();
                 StartInformationService();
@@ -53,6 +44,63 @@ namespace CachedTTSRelay {
                     Thread.Sleep(60000);
                 }
             }
+        }
+
+        private static async Task<bool> CheckForUpdates() {
+            try {
+                using var client = new HttpClient();
+                var updateInfo = await client.GetStringAsync("https://raw.githubusercontent.com/Sebane1/CachedTTSRelay/update.json");
+                var updateData = JsonConvert.DeserializeObject<UpdateInfo>(updateInfo);
+                
+                if (Version.Parse(updateData.Version) > Version.Parse(_version)) {
+                    Console.WriteLine($"New version {updateData.Version} available!");
+                    
+                    // Download the new version
+                    var newVersion = await client.GetByteArrayAsync(updateData.DownloadUrl);
+                    var updateScript = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "update.sh");
+                    var newVersionPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "new-version");
+                    
+                    await File.WriteAllBytesAsync(newVersionPath, newVersion);
+                    
+                    // Create platform-specific update script
+                    if (OperatingSystem.IsLinux()) {
+                        await File.WriteAllTextAsync(updateScript, 
+                            $"""
+                            #!/bin/bash
+                            chmod +x "{newVersionPath}"
+                            mv "{newVersionPath}" "{Process.GetCurrentProcess().MainModule?.FileName}"
+                            exec "{Process.GetCurrentProcess().MainModule?.FileName}"
+                            """);
+                    } else if (OperatingSystem.IsWindows()) {
+                        updateScript = Path.ChangeExtension(updateScript, ".cmd");
+                        await File.WriteAllTextAsync(updateScript, 
+                            $"""
+                            @echo off
+                            move /y "{newVersionPath}" "{Process.GetCurrentProcess().MainModule?.FileName}"
+                            start "" "{Process.GetCurrentProcess().MainModule?.FileName}"
+                            """);
+                    }
+
+                    // Make the script executable on Linux
+                    if (OperatingSystem.IsLinux()) {
+                        Process.Start("chmod", $"+x {updateScript}").WaitForExit();
+                    }
+
+                    // Start the update script and exit
+                    Process.Start(updateScript);
+                    return false;
+                }
+                return true;
+            } catch (Exception ex) {
+                Console.WriteLine($"Update check failed: {ex.Message}");
+                return true; // Continue running current version if update check fails
+            }
+        }
+
+        public class UpdateInfo
+        {
+            public string Version { get; set; }
+            public string DownloadUrl { get; set; }
         }
 
         private static void StartInformationService() {
