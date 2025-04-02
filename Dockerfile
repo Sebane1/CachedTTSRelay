@@ -3,8 +3,7 @@ ARG TARGETARCH
 WORKDIR /source
 
 COPY --link . .
-RUN dotnet restore -a $TARGETARCH *.sln
-RUN dotnet publish -a $TARGETARCH --no-restore -o /out
+RUN dotnet publish -a $TARGETARCH -o /out
 
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/runtime:8.0
 COPY --link --from=build /out /out
