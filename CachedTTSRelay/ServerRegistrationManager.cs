@@ -33,8 +33,8 @@ namespace CachedTTSRelay {
             }
             var ipInfo = await GetHardwareLocation(GetPublicIp().ToString());
             _request.Region = ipInfo.Region;
-            float x = float.Parse(ipInfo.Latitude);
-            float y = float.Parse(ipInfo.Longitude);
+            float y = float.Parse(ipInfo.Latitude);
+            float x = float.Parse(ipInfo.Longitude);
             _request.HardwareRegionLocation = new System.Numerics.Vector2(x, y);
             if (string.IsNullOrEmpty(_request.PublicHostAddress)) {
                 _request.PublicHostAddress = GetPublicIp().ToString();
@@ -80,7 +80,7 @@ namespace CachedTTSRelay {
                                                 ctx.Response.StatusCode = (int)HttpStatusCode.OK;
                                                 try {
                                                     var data = await GetHardwareLocation(ctx.Request.RemoteEndPoint.Address.ToString());
-                                                    request.HardwareRegionLocation = new Vector2(float.Parse(data.Latitude), float.Parse(data.Longitude));
+                                                    request.HardwareRegionLocation = new Vector2(float.Parse(data.Longitude), float.Parse(data.Latitude));
                                                 } catch {
 
                                                 }
@@ -144,16 +144,11 @@ namespace CachedTTSRelay {
             ServerRegistrationRequest closestServer = null;
             float lastClosestDistance = float.MaxValue;
             foreach (var entry in _serverList) {
-                float nextDistance = Vector2.Distance(request.HardwareRegionLocation, entry.Value.HardwareRegionLocation);
+                float nextDistance = Math.Abs(Vector2.Distance(request.HardwareRegionLocation, entry.Value.HardwareRegionLocation));
                 if (closestServer == null || nextDistance < lastClosestDistance) {
                     closestServer = entry.Value;
                     lastClosestDistance = Vector2.Distance(request.HardwareRegionLocation, closestServer.HardwareRegionLocation);
                 }
-            }
-            if (closestServer != null) {
-                closestServer.Region = "";
-                closestServer.HardwareRegionLocation = new Vector2();
-                closestServer.UniqueIdentifier = "";
             }
             return closestServer;
         }
